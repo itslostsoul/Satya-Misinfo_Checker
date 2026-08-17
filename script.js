@@ -73,6 +73,36 @@
     // Initialization & Event Listeners
     // =========================================================================
 
+    async function processSharedImage() {
+        if (window.location.search.includes("shared=true")) {
+            // Give instant UI feedback!
+            dropContentEmpty.classList.add("hidden");
+            dropContentPreview.classList.remove("hidden");
+            previewFilename.textContent = "Intercepting from WhatsApp...";
+
+            try {
+                const cache = await caches.open("satya-share-cache");
+                const response = await cache.match("/shared-image");
+                
+                if (response) {
+                    const blob = await response.blob();
+                    const file = new File([blob], "shared_image.jpg", { type: blob.type || "image/jpeg" });
+                    
+                    // Trigger your actual preview logic!
+                    handleFileSelection(file);
+                    
+                    // Clean up the URL and cache
+                    await cache.delete("/shared-image");
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                } else {
+                    showError("Could not retrieve image from Service Worker cache.");
+                }
+            } catch (err) {
+                console.error("Failed to load shared image:", err);
+            }
+        }
+    }
+
     function init() {
         // Drag & drop triggers
         dropZone.addEventListener("click", (e) => {
@@ -127,6 +157,8 @@
         closeErrorBtn.addEventListener("click", hideError);
         copyJsonBtn.addEventListener("click", copyResultJson);
     }
+
+    processSharedImage();
 
     // =========================================================================
     // File Handling & Preview
@@ -521,6 +553,33 @@
             console.error("Clipboard copy failed:", err);
         });
     }
+
+
+    async function processSharedImage() {
+    // Check if the URL has our secret "?shared=true" trigger
+    if (window.location.search.includes("shared=true")) {
+        try {
+            // Open the cache and grab the saved image
+            const cache = await caches.open("satya-share-cache");
+            const response = await cache.match("/shared-image");
+
+            if (response) {
+                const blob = await response.blob();
+                // Package it into a File object for your existing logic
+                const file = new File([blob], "whatsapp_shared.jpg", { type: blob.type });
+
+                // Trigger the UI preview!
+                handleFileSelection(file);
+
+                // Clean up the cache and remove "?shared=true" from the URL bar
+                await cache.delete("/shared-image");
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        } catch (err) {
+            console.error("Failed to load shared image:", err);
+        }
+    }
+}
 
     // Run on DOM Ready
     if (document.readyState === "loading") {
