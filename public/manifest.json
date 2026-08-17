@@ -1,0 +1,9 @@
+{
+  "name": "Satya",
+  "short_name": "Satya",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D1117",
+  "theme_color": "#00B4D8",
+  "icons": []
+}

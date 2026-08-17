@@ -1,0 +1,291 @@
+body {
+    background-color: #0b1120; /* Deepest tech blue/black */
+    background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 30px 30px; /* Creates the grid pattern */
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    overflow: hidden; /* Stops the glowing orbs from causing scrollbars */
+}
+
+.app-container {
+    width: 100%;
+    max-width: 420px;
+    background: rgba(15, 23, 42, 0.5); /* Semi-transparent slate blue */
+    backdrop-filter: blur(24px); /* Heavy blur for the grid behind it */
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.2); /* Simulates light hitting the top edge */
+    border-left: 1px solid rgba(255, 255, 255, 0.15); /* Simulates light hitting the left edge */
+    border-radius: 24px;
+    padding: 35px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6); /* Deeper drop shadow to float the glass */
+    box-sizing: border-box;
+    z-index: 10;
+}
+
+.card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    margin: 20px auto;
+    max-width: 90%;
+    border-top: 8px solid #ff9800; /* Default Unverifiable color */
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.confidence-badge {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.explanation-box {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    line-height: 1.5;
+    color: #e2e8f0; /* Light gray text for readability */
+    border-left: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+/* --- 3. Dynamic Neon States (The Magic) --- */
+.verdict-true {
+    border-top: 4px solid #00ff88 !important;
+    box-shadow: 0 10px 30px rgba(0, 255, 136, 0.1) !important;
+}
+.verdict-true #verdict-title { 
+    color: #00ff88; 
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5); 
+}
+
+.verdict-false {
+    border-top: 4px solid #ff3366 !important;
+    box-shadow: 0 10px 30px rgba(255, 51, 102, 0.1) !important;
+}
+.verdict-false #verdict-title { 
+    color: #ff3366; 
+    text-shadow: 0 0 10px rgba(255, 51, 102, 0.5); 
+}
+
+.verdict-unverifiable {
+    border-top: 4px solid #ffb347 !important;
+    box-shadow: 0 10px 30px rgba(255, 179, 71, 0.1) !important;
+}
+.verdict-unverifiable #verdict-title { 
+    color: #ffb347; 
+    text-shadow: 0 0 10px rgba(255, 179, 71, 0.5); 
+}
+
+/* Intake Styles */
+#claim-text {
+    width: 100%;
+    height: 120px;
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.4); /* Dark inset cavity */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: #00ff88; /* Text glows green as they type */
+    font-size: 16px;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+    resize: none;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+}
+
+#claim-text::placeholder {
+    color: #64748b; /* Lighter, readable grey */
+    font-style: italic;
+}
+
+#claim-text:focus {
+    outline: none;
+    border-color: #00b4db;
+    box-shadow: 0 0 15px rgba(0, 180, 219, 0.2), inset 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.upload-label {
+    display: block;
+    text-align: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.2);
+    color: #a0aec0;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 25px;
+    transition: all 0.3s ease;
+}
+
+.upload-label:hover {
+    border-color: #00ff88;
+    color: #00ff88;
+    background: rgba(0, 255, 136, 0.05);
+    transform: translateY(-2px); /* Makes it pop up slightly */
+}
+
+#verify-btn {
+    width: 100%;
+    padding: 16px;
+    background: transparent;
+    color: #00ff88;
+    border: 2px solid #00ff88;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 2px; /* Makes it look more high-tech */
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.1);
+    transition: all 0.3s ease;
+    animation: pulseGlow 2.5s infinite; /* Active pulse */
+}
+
+#verify-btn:hover {
+    background: #00ff88;
+    color: #0f2027; /* Dark text on bright background */
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+    transform: translateY(-2px); /* Slight lift effect */
+}
+
+/* Loading Styles */
+#loading-view {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(255,255,255,0.05);
+    border-top: 5px solid #00b4db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px auto;
+    box-shadow: 0 0 15px rgba(0, 180, 219, 0.2);
+}
+
+.loading-text {
+    color: #00b4db;
+    text-shadow: 0 0 5px rgba(0, 180, 219, 0.3);
+    font-weight: 500;
+}
+
+/* Keyframes for the infinite spin */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Utility to toggle views via JS */
+.hidden {
+    display: none !important;
+}
+
+.secondary-btn {
+    width: 100%;
+    padding: 14px;
+    background-color: #e4e6eb;
+    color: #050505;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.secondary-btn:hover {
+    background-color: #d8dadf;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+header h1 {
+    font-size: 32px;
+    margin: 0 0 5px 0;
+    background: linear-gradient(to right, #00ff88, #00b4db);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px; /* Adds perfect spacing between text and the shield */
+}
+
+header p {
+    color: #a0aec0;
+    margin-bottom: 30px;
+}
+
+.sources {
+    color: #a0aec0;
+}
+
+.sources a {
+    color: #00b4db; /* Neon blue links */
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.sources a:hover {
+    text-decoration: underline;
+    text-shadow: 0 0 8px rgba(0, 180, 219, 0.6);
+}
+
+.bg-shape {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px); /* This makes them look like glowing light */
+    z-index: -1; /* Keeps them behind your app */
+    animation: float 10s infinite alternate ease-in-out;
+}
+
+.bg-teal {
+    width: 300px;
+    height: 300px;
+    background: #00b4db;
+    top: -50px;
+    left: -50px;
+    opacity: 0.5;
+}
+
+.bg-green {
+    width: 250px;
+    height: 250px;
+    background: #00ff88;
+    bottom: -50px;
+    right: -50px;
+    opacity: 0.3;
+}
+
+@keyframes float {
+    0% { transform: translateY(0) scale(1); }
+    100% { transform: translateY(20px) scale(1.1); }
+}
+
+@keyframes pulseGlow {
+    0% { box-shadow: 0 0 5px rgba(0, 255, 136, 0.1); }
+    50% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+    100% { box-shadow: 0 0 5px rgba(0, 255, 136, 0.1); }
+}
