@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satya | Forward-Checker</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="bg-shape bg-teal"></div>
+    <div class="bg-shape bg-green"></div>
+    
+    <div class="app-container">
+        <header>
+            <h1>Satya 🛡️</h1>
+            <p>Verify forwards in under 60 seconds.</p>
+        </header>
+
+        <!-- 1. Intake View -->
+        <main id="intake-view">
+            <textarea id="claim-text" placeholder="Paste suspicious text here..."></textarea>
+
+            <div class="file-upload-box">
+                <input type="file" id="claim-image" accept="image/*" hidden>
+                <label for="claim-image" class="upload-label">📷 Tap to Upload Image</label>
+            </div>
+
+            <button id="verify-btn">Verify Forward</button>
+        </main>
+
+        <!-- 2. Loading View (Hidden by default) -->
+        <div id="loading-view" class="hidden">
+            <div class="spinner"></div>
+            <p class="loading-text">Scanning fact-check databases...</p>
+        </div>
+
+        <!-- 3. Verdict Card View (Hidden by default) -->
+        <section id="result-view" class="hidden">
+            <div id="verdict-container" class="card verdict-unverifiable">
+                <h2 id="verdict-title">Unverifiable ⚠️</h2>
+
+                <div class="confidence-badge">
+                    Confidence: <span id="confidence-score">75%</span>
+                </div>
+
+                <div class="explanation-box">
+                    <p id="expl-en">Waiting for analysis...</p>
+                </div>
+
+                <div class="sources">
+                    <strong>Sources:</strong> <span id="source-links">-</span>
+                </div>
+            </div>
+
+            <button id="reset-btn" class="secondary-btn">Check Another Claim</button>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
