@@ -1,9 +1,16 @@
 import os
 import httpx
-from anthropic import Anthropic
+from anthropic import AsyncAnthropic
 from sentence_transformers import SentenceTransformer, util
 
-anthropic_client = Anthropic()
+anthropic_client = None
+
+def get_anthropic_client():
+    global anthropic_client
+    if anthropic_client is None:
+        anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    return anthropic_client
+
 embedder = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 
 async def run_text_pipeline(text: str) -> dict:
@@ -43,7 +50,8 @@ async def run_text_pipeline(text: str) -> dict:
     }
 
 async def extract_claim(text: str) -> str:
-    response = anthropic_client.messages.create(
+    client = get_anthropic_client()
+    response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=200,
         messages=[{

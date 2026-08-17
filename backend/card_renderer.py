@@ -1,13 +1,21 @@
-from anthropic import Anthropic
+import os
+from anthropic import AsyncAnthropic
 
-anthropic_client = Anthropic()
+anthropic_client = None
+
+def get_anthropic_client():
+    global anthropic_client
+    if anthropic_client is None:
+        anthropic_client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    return anthropic_client
 
 async def render_card(verdict: dict, language: str) -> dict:
     v = verdict["verdict"]
     conf = verdict["confidence"]
     evidence_summary = build_evidence_summary(verdict)
 
-    response = anthropic_client.messages.create(
+    client = get_anthropic_client()
+    response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=300,
         messages=[{

@@ -19,7 +19,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-HAS_KEYS = bool(os.getenv("ANTHROPIC_API_KEY")) and bool(os.getenv("GOOGLE_FACT_CHECK_KEY"))
+def is_valid_key(key: str) -> bool:
+    return bool(key) and not key.strip().lower().startswith("your_")
+
+HAS_KEYS = is_valid_key(os.getenv("ANTHROPIC_API_KEY")) and is_valid_key(os.getenv("GOOGLE_FACT_CHECK_KEY"))
 
 @app.post("/api/verify")
 async def verify(

@@ -74,6 +74,18 @@
                 const mappedId = mapping[id] || id;
                 let el = originalGet.call(document, mappedId);
                 
+                // Dynamically convert SPAN to UL for sources to fit the <li> markup of script.js
+                if (id === 'sources' && el && el.tagName === 'SPAN') {
+                    const ul = document.createElement('ul');
+                    ul.id = 'source-links';
+                    ul.className = el.className;
+                    ul.style.listStyleType = 'none';
+                    ul.style.paddingLeft = '0';
+                    ul.style.margin = '10px 0 0 0';
+                    el.parentNode.replaceChild(ul, el);
+                    el = ul;
+                }
+                
                 // Dynamically create explanation-regional to support regional language rendering
                 if (!el && id === 'explanation-regional') {
                     const box = document.querySelector('.explanation-box');

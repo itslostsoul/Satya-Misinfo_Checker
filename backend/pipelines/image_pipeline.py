@@ -10,9 +10,17 @@ deepfake_detector = hf_pipeline(
 
 async def run_image_pipeline(image_bytes: bytes) -> dict:
     # Step 1: AI/deepfake detection
-    ai_result = deepfake_detector(image_bytes)
-    is_ai = ai_result[0]['label'].lower() in ['artificial', 'fake', 'ai-generated']
-    ai_confidence = float(ai_result[0]['score'])
+    try:
+        from PIL import Image
+        import io
+        image = Image.open(io.BytesIO(image_bytes))
+        ai_result = deepfake_detector(image)
+        is_ai = ai_result[0]['label'].lower() in ['artificial', 'fake', 'ai-generated']
+        ai_confidence = float(ai_result[0]['score'])
+    except Exception as e:
+        print(f"[WARN] Deepfake detection failed to parse image: {e}")
+        is_ai = False
+        ai_confidence = 0.0
 
     # Step 2: Reverse image search
     serp_result = await reverse_image_search(image_bytes)
