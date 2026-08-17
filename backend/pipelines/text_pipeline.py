@@ -1,10 +1,19 @@
 import os
 import httpx
-from anthropic import Anthropic
+from google import genai
 from sentence_transformers import SentenceTransformer, util
 
-anthropic_client = Anthropic()
-embedder = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY")) if os.getenv("GEMINI_API_KEY") else None
+_embedder = None
+
+
+def get_embedder():
+    # Loaded lazily (not at import time) so the server can boot — and mock
+    # mode can serve requests — without pulling ~470MB from HF Hub first.
+    global _embedder
+    if _embedder is None:
+        _embedder = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+    return _embedder
 
 async def run_text_pipeline(text: str) -> dict:
     claim = await extract_claim(text)
@@ -18,6 +27,7 @@ async def run_text_pipeline(text: str) -> dict:
             "sources": []
         }
 
+    embedder = get_embedder()
     claim_embedding = embedder.encode(claim, convert_to_tensor=True)
     best_match = None
     best_score = 0.0
@@ -43,19 +53,15 @@ async def run_text_pipeline(text: str) -> dict:
     }
 
 async def extract_claim(text: str) -> str:
-    response = anthropic_client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=200,
-        messages=[{
-            "role": "user",
-            "content": (
-                "Extract the single core factual claim from this WhatsApp forward. "
-                "Output only the claim in one English sentence. No explanation. No preamble.\n\n"
-                f"Forward: {text}"
-            )
-        }]
+    response = gemini_client.models.generate_content(
+        model="gemini-3.6-flash",
+        contents=(
+            "Extract the single core factual claim from this WhatsApp forward. "
+            "Output only the claim in one English sentence. No explanation. No preamble.\n\n"
+            f"Forward: {text}"
+        )
     )
-    return response.content[0].text.strip()
+    return response.text.strip()
 
 async def search_fact_check_sources(claim: str) -> list:
     GFC_KEY = os.getenv("GOOGLE_FACT_CHECK_KEY")

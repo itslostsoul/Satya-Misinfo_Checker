@@ -1,33 +1,31 @@
-from anthropic import Anthropic
+import os
 
-anthropic_client = Anthropic()
+from google import genai
+
+gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY")) if os.getenv("GEMINI_API_KEY") else None
 
 async def render_card(verdict: dict, language: str) -> dict:
     v = verdict["verdict"]
     conf = verdict["confidence"]
     evidence_summary = build_evidence_summary(verdict)
 
-    response = anthropic_client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=300,
-        messages=[{
-            "role": "user",
-            "content": (
-                f"You are Satya, a fact-checker for Indian WhatsApp users.\n\n"
-                f"Verdict: {v.upper()}\n"
-                f"Confidence: {conf if conf else 'N/A'}%\n"
-                f"Evidence: {evidence_summary}\n\n"
-                f"Write exactly two lines:\n"
-                f"Line 1 (EN): Plain English, grandparent level, no jargon.\n"
-                f"Line 2 ({language.upper()}): Same meaning in {language}, natural and colloquial.\n\n"
-                f"Format strictly as:\n"
-                f"EN: <english explanation>\n"
-                f"{language.upper()}: <regional explanation>"
-            )
-        }]
+    response = gemini_client.models.generate_content(
+        model="gemini-3.6-flash",
+        contents=(
+            f"You are Satya, a fact-checker for Indian WhatsApp users.\n\n"
+            f"Verdict: {v.upper()}\n"
+            f"Confidence: {conf if conf else 'N/A'}%\n"
+            f"Evidence: {evidence_summary}\n\n"
+            f"Write exactly two lines:\n"
+            f"Line 1 (EN): Plain English, grandparent level, no jargon.\n"
+            f"Line 2 ({language.upper()}): Same meaning in {language}, natural and colloquial.\n\n"
+            f"Format strictly as:\n"
+            f"EN: <english explanation>\n"
+            f"{language.upper()}: <regional explanation>"
+        )
     )
 
-    lines = response.content[0].text.strip().split('\n')
+    lines = response.text.strip().split('\n')
     en_line = lines[0].replace("EN: ", "").strip() if lines else ""
     regional_line = lines[1].replace(f"{language.upper()}: ", "").strip() if len(lines) > 1 else ""
 
