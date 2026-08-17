@@ -37,4 +37,4 @@ async def verify(
     card = await render_card(verdict, language)
     return card
 
-app.mount("/", StaticFiles(directory="../public", html=True), name="static")
+app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")
