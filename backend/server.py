@@ -20,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-HAS_KEYS = bool(os.getenv("GEMINI_API_KEY")) and bool(os.getenv("GOOGLE_FACT_CHECK_KEY"))
+HAS_KEYS = (bool(os.getenv("GEMINI_API_KEY")) and bool(os.getenv("GOOGLE_FACT_CHECK_KEY"))) or bool(os.getenv("ANTHROPIC_API_KEY"))
 
 @app.post("/api/verify")
 async def verify(
@@ -37,5 +37,25 @@ async def verify(
     verdict = merge_and_calibrate(pipeline_results)
     card = await render_card(verdict, language)
     return card
+
+from pydantic import BaseModel
+from fastapi import HTTPException
+
+class AnalyzeTextRequest(BaseModel):
+    text: str
+
+@app.post("/analyze-text")
+async def analyze_text_endpoint(req: AnalyzeTextRequest):
+    if not req.text or not req.text.strip():
+        raise HTTPException(status_code=400, detail="Text cannot be empty")
+    if len(req.text) > 5000:
+        raise HTTPException(status_code=400, detail="Text exceeds 5000 characters limit")
+        
+    from orchestrator import analyze_text
+    try:
+        result = await analyze_text(req.text)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 app.mount("/", StaticFiles(directory="../public", html=True), name="static")

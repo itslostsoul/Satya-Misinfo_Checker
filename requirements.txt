@@ -11,4 +11,4 @@ sentence-transformers
 transformers
 torch
 python-dotenv
-python-telegram-bot
+beautifulsoup4

@@ -50,42 +50,21 @@ async def run_image_pipeline(image_bytes: bytes) -> dict:
         "source_urls": serp_result.get("source_urls", [])
     }
 
-async def upload_temp_image(image_bytes: bytes) -> str:
-    # SerpAPI's reverse-image engines take a public image URL, not raw bytes,
-    # so the image has to be hosted somewhere public first.
-    #
-    # KNOWN BLIND SPOT: 0x0.st has permanently disabled anonymous uploads
-    # ("uploads disabled ... no ETA", checked 2026-08-17). catbox.moe and
-    # tmpfiles.org were also tried and are dead/blocked. Until someone signs
-    # up for a free imgbb.com key (or similar) and wires it in here, this
-    # call will fail and reverse_image_search() below degrades to
-    # "unverifiable" — which is why it's wrapped in try/except, not a bug.
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        resp = await client.post(
-            "https://0x0.st",
-            files={"file": ("image.jpg", image_bytes, "image/jpeg")}
-        )
-    resp.raise_for_status()
-    return resp.text.strip()
-
 async def reverse_image_search(image_bytes: bytes) -> dict:
-    SERP_KEY = os.getenv("SERPAPI_API_KEY")
+    SERP_KEY = os.getenv("SERPAPI_KEY") or os.getenv("SERPAPI_API_KEY")
     if not SERP_KEY:
         return {}
 
     try:
-        image_url = await upload_temp_image(image_bytes)
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(
+            resp = await client.post(
                 "https://serpapi.com/search",
-                params={"engine": "google_reverse_image", "image_url": image_url, "api_key": SERP_KEY}
+                params={"engine": "google_reverse_image", "api_key": SERP_KEY},
+                files={"image": ("image.jpg", image_bytes, "image/jpeg")}
             )
         return parse_serp_response(resp.json())
     except Exception as e:
-        # Expected right now — see upload_temp_image()'s docstring. This is a
-        # documented blind spot, not a silent failure: the pipeline still
-        # returns a valid (unverifiable) result instead of crashing.
-        print(f"[WARN] Reverse image search unavailable (image host down): {e}")
+        print(f"[WARN] Reverse image search failed: {e}")
         return {}
 
 def parse_serp_response(data: dict) -> dict:

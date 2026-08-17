@@ -52,11 +52,25 @@ function renderVerdictCard(data) {
       : `Confidence: ${data.confidence}%`;
   }
 
-  const enEl = document.getElementById('explanation-en');
-  if (enEl) enEl.textContent = data.explanation_en || '';
+  const langSelect = document.getElementById('lang-select');
+  const selectedLang = langSelect ? langSelect.value : 'english';
 
+  const enEl = document.getElementById('explanation-en');
   const regionalEl = document.getElementById('explanation-regional');
-  if (regionalEl) regionalEl.textContent = data.explanation_regional || '';
+
+  if (selectedLang === 'english') {
+    if (enEl) enEl.textContent = data.explanation_en || '';
+    if (regionalEl) {
+      regionalEl.textContent = '';
+      regionalEl.style.display = 'none';
+    }
+  } else {
+    if (enEl) enEl.textContent = '';
+    if (regionalEl) {
+      regionalEl.textContent = data.explanation_regional || '';
+      regionalEl.style.display = 'block';
+    }
+  }
 
   const sourcesList = document.getElementById('sources');
   if (sourcesList) {

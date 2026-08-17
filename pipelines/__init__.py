@@ -1,1 +1,0 @@
-# Satya pipelines package
