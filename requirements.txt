@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-multipart
+httpx
+anthropic
+sentence-transformers
+transformers
+torch
+python-dotenv
+pillow
+python-telegram-bot
