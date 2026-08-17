@@ -1,579 +1,534 @@
-// ==========================================
-// SATYA - FORWARD CHECKER
-// Frontend Logic
-// ==========================================
-
-
-// ==========================================
-// 1. CONFIGURATION
-// ==========================================
-
-// TEMPORARY:
-// Replace this with the actual backend URL
-// once the backend team gives it to us.
-
-const API_URL = "http://localhost:5000/api/check";
-
-
-// Maximum time we allow the backend to respond
-const REQUEST_TIMEOUT = 60000;
-
-
-// ==========================================
-// 2. GET HTML ELEMENTS
-// ==========================================
-
-const claimText = document.getElementById("claim-text");
-const claimImage = document.getElementById("claim-image");
-const verifyBtn = document.getElementById("verify-btn");
-
-const intakeView = document.getElementById("intake-view");
-const loadingView = document.getElementById("loading-view");
-const resultView = document.getElementById("result-view");
-
-const verdictContainer = document.getElementById("verdict-container");
-const verdictTitle = document.getElementById("verdict-title");
-const confidenceScore = document.getElementById("confidence-score");
-
-const explanationEnglish = document.getElementById("expl-en");
-const sourceLinks = document.getElementById("source-links");
-
-const resetBtn = document.getElementById("reset-btn");
-
-
-// ==========================================
-// 3. STATE
-// ==========================================
-
-let selectedImage = null;
-let countdownTimer = null;
-
-
-// ==========================================
-// 4. IMAGE SELECTION
-// ==========================================
-
-claimImage.addEventListener("change", function () {
-
-    if (claimImage.files.length === 0) {
-        selectedImage = null;
-        return;
-    }
-
-    selectedImage = claimImage.files[0];
-
-    console.log("Image selected:", selectedImage.name);
-
-    // Change upload text to show selected file
-    const uploadLabel = document.querySelector(".upload-label");
-
-    uploadLabel.textContent = `📷 ${selectedImage.name}`;
-});
-
-
-// ==========================================
-// 5. VERIFY BUTTON
-// ==========================================
-
-verifyBtn.addEventListener("click", async function () {
-
-    const text = claimText.value.trim();
-
-    // Check whether user provided anything
-    if (!text && !selectedImage) {
-
-        alert("Please paste a claim or upload an image.");
-
-        return;
-    }
-
-
-    // Prevent multiple requests
-    verifyBtn.disabled = true;
-
-
-    // Show loading screen
-    showLoading();
-
-
-    try {
-
-        const result = await sendToBackend(text, selectedImage);
-
-        console.log("Backend response:", result);
-
-        displayVerdict(result);
-
-    } catch (error) {
-
-        console.error("Verification error:", error);
-
-        showError(error.message);
-
-    } finally {
-
-        verifyBtn.disabled = false;
-
-    }
-
-});
-
-
-// ==========================================
-// 6. SEND DATA TO BACKEND
-// ==========================================
-
-async function sendToBackend(text, image) {
-
-    const formData = new FormData();
-
-
-    // Add text if available
-    if (text) {
-        formData.append("text", text);
-    }
-
-
-    // Add image if available
-    if (image) {
-        formData.append("image", image);
-    }
-
-
-    // AbortController lets us stop the request
-    // if it takes longer than 60 seconds.
-
-    const controller = new AbortController();
-
-    const timeout = setTimeout(() => {
-
-        controller.abort();
-
-    }, REQUEST_TIMEOUT);
-
-
-    try {
-
-        const response = await fetch(API_URL, {
-
-            method: "POST",
-
-            body: formData,
-
-            signal: controller.signal
-
+/**
+ * Satya Image Forensics — Frontend Client Logic
+ */
+
+(function () {
+    "use strict";
+
+    // API Configuration
+    const API_ENDPOINT = (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+        ? "http://localhost:8000/analyze"
+        : "/analyze";
+
+    const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+    // State Variables
+    let selectedFile = null;
+    let latestAnalysisResult = null;
+    let loadingInterval = null;
+
+    // DOM Elements
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-input");
+    const dropContentEmpty = document.getElementById("drop-content-empty");
+    const dropContentPreview = document.getElementById("drop-content-preview");
+    const previewImage = document.getElementById("preview-image");
+    const previewFilename = document.getElementById("preview-filename");
+    const previewFilesize = document.getElementById("preview-filesize");
+    const removeImgBtn = document.getElementById("remove-img-btn");
+
+    const screenshotToggle = document.getElementById("screenshot-toggle");
+    const claimedSourceInput = document.getElementById("claimed-source-input");
+    const analyzeBtn = document.getElementById("analyze-btn");
+
+    const intakePanel = document.getElementById("intake-panel");
+    const loadingPanel = document.getElementById("loading-panel");
+    const resultsPanel = document.getElementById("results-panel");
+    const loadingStepText = document.getElementById("loading-step-text");
+
+    const errorBanner = document.getElementById("error-banner");
+    const errorMessage = document.getElementById("error-message");
+    const closeErrorBtn = document.getElementById("close-error-btn");
+
+    const verdictBanner = document.getElementById("verdict-banner");
+    const verdictTitle = document.getElementById("verdict-title");
+    const verdictIcon = document.getElementById("verdict-icon");
+
+    const confidenceCircle = document.getElementById("confidence-circle");
+    const confidenceNumber = document.getElementById("confidence-number");
+    const confidenceTier = document.getElementById("confidence-tier");
+    const verdictReason = document.getElementById("verdict-reason");
+    const provenanceBadges = document.getElementById("provenance-badges");
+
+    // Sub-signal elements
+    const elaBadge = document.getElementById("ela-badge");
+    const elaBar = document.getElementById("ela-bar");
+    const elaDesc = document.getElementById("ela-desc");
+
+    const aiBadge = document.getElementById("ai-badge");
+    const aiBar = document.getElementById("ai-bar");
+    const aiDesc = document.getElementById("ai-desc");
+
+    const dfBadge = document.getElementById("df-badge");
+    const dfBar = document.getElementById("df-bar");
+    const dfDesc = document.getElementById("df-desc");
+
+    const chyronBadge = document.getElementById("chyron-badge");
+    const chyronBar = document.getElementById("chyron-bar");
+    const chyronDesc = document.getElementById("chyron-desc");
+
+    const latencyVal = document.getElementById("latency-val");
+    const copyJsonBtn = document.getElementById("copy-json-btn");
+    const resetBtn = document.getElementById("reset-btn");
+
+    // =========================================================================
+    // Initialization & Event Listeners
+    // =========================================================================
+
+    function init() {
+        // Drag & drop triggers
+        dropZone.addEventListener("click", (e) => {
+            if (e.target !== removeImgBtn) {
+                fileInput.click();
+            }
         });
 
+        dropZone.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fileInput.click();
+            }
+        });
 
-        clearTimeout(timeout);
+        ["dragenter", "dragover"].forEach((eventName) => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add("drag-active");
+            });
+        });
 
+        ["dragleave", "drop"].forEach((eventName) => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove("drag-active");
+            });
+        });
 
-        // Backend returned an HTTP error
-        if (!response.ok) {
+        dropZone.addEventListener("drop", (e) => {
+            const files = e.dataTransfer?.files;
+            if (files && files.length > 0) {
+                handleFileSelection(files[0]);
+            }
+        });
 
-            throw new Error(
-                `Server error (${response.status})`
-            );
+        fileInput.addEventListener("change", () => {
+            if (fileInput.files && fileInput.files.length > 0) {
+                handleFileSelection(fileInput.files[0]);
+            }
+        });
 
-        }
+        removeImgBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            clearSelectedFile();
+        });
 
-
-        // Convert JSON response into JavaScript object
-        const data = await response.json();
-
-        return data;
-
-    } catch (error) {
-
-        clearTimeout(timeout);
-
-
-        if (error.name === "AbortError") {
-
-            throw new Error(
-                "The verification took too long. Please try again."
-            );
-
-        }
-
-
-        throw error;
-
+        analyzeBtn.addEventListener("click", executeAnalysis);
+        resetBtn.addEventListener("click", resetToUploadView);
+        closeErrorBtn.addEventListener("click", hideError);
+        copyJsonBtn.addEventListener("click", copyResultJson);
     }
 
-}
+    // =========================================================================
+    // File Handling & Preview
+    // =========================================================================
 
+    function handleFileSelection(file) {
+        hideError();
 
-// ==========================================
-// 7. SHOW LOADING SCREEN
-// ==========================================
-
-function showLoading() {
-
-    intakeView.classList.add("hidden");
-
-    resultView.classList.add("hidden");
-
-    loadingView.classList.remove("hidden");
-
-
-    startCountdown();
-
-}
-
-
-// ==========================================
-// 8. 60 SECOND COUNTDOWN
-// ==========================================
-
-function startCountdown() {
-
-    let seconds = 60;
-
-    const loadingText =
-        document.querySelector(".loading-text");
-
-
-    loadingText.textContent =
-        `Scanning fact-check databases... ${seconds}s`;
-
-
-    clearInterval(countdownTimer);
-
-
-    countdownTimer = setInterval(() => {
-
-        seconds--;
-
-
-        if (seconds <= 0) {
-
-            clearInterval(countdownTimer);
-
-            loadingText.textContent =
-                "Finalizing verification...";
-
+        // Validate MIME type
+        const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+        if (!validTypes.includes(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
+            showError("Please upload a valid image file (JPG, PNG, WEBP, or GIF).");
             return;
-
         }
 
+        // Validate File Size
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            showError("File size exceeds 10MB limit. Please choose a smaller image.");
+            return;
+        }
 
-        loadingText.textContent =
-            `Scanning fact-check databases... ${seconds}s`;
+        selectedFile = file;
 
-    }, 1000);
+        // Render preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImage.src = e.target.result;
+            previewFilename.textContent = file.name;
+            previewFilesize.textContent = formatBytes(file.size);
 
-}
-
-
-// ==========================================
-// 9. DISPLAY VERDICT
-// ==========================================
-
-function displayVerdict(data) {
-
-    clearInterval(countdownTimer);
-
-
-    loadingView.classList.add("hidden");
-
-    resultView.classList.remove("hidden");
-
-
-    // --------------------------------------
-    // Get verdict
-    // --------------------------------------
-
-    const verdict =
-        normalizeVerdict(data.verdict);
-
-
-    // --------------------------------------
-    // Change card styling
-    // --------------------------------------
-
-    verdictContainer.classList.remove(
-        "verdict-true",
-        "verdict-false",
-        "verdict-unverifiable"
-    );
-
-
-    verdictContainer.classList.add(
-        `verdict-${verdict}`
-    );
-
-
-    // --------------------------------------
-    // Verdict title
-    // --------------------------------------
-
-    if (verdict === "true") {
-
-        verdictTitle.textContent =
-            "Likely True ✅";
-
+            dropContentEmpty.classList.add("hidden");
+            dropContentPreview.classList.remove("hidden");
+            analyzeBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
     }
 
-    else if (verdict === "false") {
-
-        verdictTitle.textContent =
-            "Likely False ❌";
-
+    function clearSelectedFile() {
+        selectedFile = null;
+        fileInput.value = "";
+        previewImage.src = "";
+        dropContentPreview.classList.add("hidden");
+        dropContentEmpty.classList.remove("hidden");
+        analyzeBtn.disabled = true;
     }
 
-    else {
-
-        verdictTitle.textContent =
-            "Unverifiable ⚠️";
-
+    function formatBytes(bytes) {
+        if (bytes === 0) return "0 Bytes";
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
     }
 
+    // =========================================================================
+    // Analysis API Request & Loading Animation
+    // =========================================================================
 
-    // --------------------------------------
-    // Confidence
-    // --------------------------------------
+    async function executeAnalysis() {
+        if (!selectedFile) return;
 
-    let confidence =
-        Number(data.confidence);
+        hideError();
+        showLoadingState();
 
+        const startTime = performance.now();
+        const formData = new FormData();
 
-    // Convert decimal confidence
-    // e.g. 0.85 → 85
+        // Support both "image_file" and "file" field conventions
+        formData.append("image_file", selectedFile);
+        formData.append("file", selectedFile);
 
-    if (confidence <= 1) {
+        if (screenshotToggle.checked) {
+            formData.append("is_screenshot", "true");
+        }
 
-        confidence = confidence * 100;
+        const claimedSource = claimedSourceInput.value.trim();
+        if (claimedSource) {
+            formData.append("claimed_source_url", claimedSource);
+        }
 
+        try {
+            const response = await fetch(API_ENDPOINT, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                let errDetail = `Server returned HTTP ${response.status}`;
+                try {
+                    const errJson = await response.json();
+                    if (errJson.detail) {
+                        errDetail = errJson.detail;
+                    }
+                } catch (_) {}
+                throw new Error(errDetail);
+            }
+
+            const data = await response.json();
+            const measuredDurationMs = Math.round(performance.now() - startTime);
+
+            latestAnalysisResult = data;
+            renderResults(data, measuredDurationMs);
+
+        } catch (error) {
+            console.error("Forensics analysis failed:", error);
+            stopLoadingAnimation();
+            intakePanel.classList.remove("hidden");
+            loadingPanel.classList.add("hidden");
+            showError(error.message || "Failed to connect to image forensics API.");
+        }
     }
 
+    function showLoadingState() {
+        intakePanel.classList.add("hidden");
+        resultsPanel.classList.add("hidden");
+        loadingPanel.classList.remove("hidden");
 
-    confidence = Math.round(confidence);
+        const steps = [
+            "Running Error Level Analysis (ELA)...",
+            "Inspecting EXIF & generative provenance tags...",
+            "Scanning 2D FFT spectral frequency artifacts...",
+            "Analyzing facial boundary seams & symmetry...",
+            "Evaluating chyron rendering & edge sharpness...",
+            "Fusing detector signals into calibrated verdict..."
+        ];
 
+        let stepIdx = 0;
+        loadingStepText.textContent = steps[0];
 
-    confidenceScore.textContent =
-        `${confidence}%`;
-
-
-    // --------------------------------------
-    // Explanation
-    // --------------------------------------
-
-    explanationEnglish.textContent =
-        data.explanation ||
-        data.explanation_en ||
-        "No explanation was provided.";
-
-
-    // --------------------------------------
-    // Sources
-    // --------------------------------------
-
-    displaySources(data.sources);
-
-}
-
-
-// ==========================================
-// 10. NORMALIZE VERDICT
-// ==========================================
-
-function normalizeVerdict(verdict) {
-
-    if (!verdict) {
-
-        return "unverifiable";
-
+        loadingInterval = setInterval(() => {
+            stepIdx = (stepIdx + 1) % steps.length;
+            loadingStepText.textContent = steps[stepIdx];
+        }, 500);
     }
 
-
-    verdict = verdict
-        .toString()
-        .toLowerCase()
-        .trim();
-
-
-    if (
-        verdict.includes("true") ||
-        verdict.includes("likely true")
-    ) {
-
-        return "true";
-
+    function stopLoadingAnimation() {
+        if (loadingInterval) {
+            clearInterval(loadingInterval);
+            loadingInterval = null;
+        }
     }
 
+    // =========================================================================
+    // Results Rendering & UI Polish
+    // =========================================================================
 
-    if (
-        verdict.includes("false") ||
-        verdict.includes("likely false")
-    ) {
+    function renderResults(data, measuredDurationMs) {
+        stopLoadingAnimation();
 
-        return "false";
+        loadingPanel.classList.add("hidden");
+        resultsPanel.classList.remove("hidden");
 
-    }
+        // 1. Verdict mapping
+        const rawVerdict = (data.verdict || "uncertain").toLowerCase();
+        let verdictKey = "uncertain";
+        let verdictLabel = "UNCERTAIN";
+        let verdictIconChar = "⚠️";
+        let ringColor = "#F59E0B";
 
+        if (rawVerdict.includes("authentic") || rawVerdict.includes("true")) {
+            verdictKey = "authentic";
+            verdictLabel = "AUTHENTIC";
+            verdictIconChar = "✅";
+            ringColor = "#22C55E";
+        } else if (rawVerdict.includes("manipulated") || rawVerdict.includes("false")) {
+            verdictKey = "manipulated";
+            verdictLabel = "MANIPULATED";
+            verdictIconChar = "❌";
+            ringColor = "#EF4444";
+        }
 
-    return "unverifiable";
+        verdictBanner.className = `verdict-banner verdict-${verdictKey}`;
+        verdictTitle.textContent = verdictLabel;
+        verdictIcon.textContent = verdictIconChar;
 
-}
+        // 2. Confidence percentage & progress circle
+        let confPercent = 50;
+        if (typeof data.confidence === "number") {
+            confPercent = data.confidence <= 1.0
+                ? Math.round(data.confidence * 100)
+                : Math.round(data.confidence);
+        }
 
+        animateCounter(confidenceNumber, confPercent, 800);
 
-// ==========================================
-// 11. DISPLAY SOURCES
-// ==========================================
+        // SVG circle stroke-dashoffset (circumference = 2 * PI * 50 = 314.159)
+        const circumference = 314.159;
+        const offset = circumference - (confPercent / 100 * circumference);
+        confidenceCircle.style.stroke = ringColor;
+        confidenceCircle.style.strokeDashoffset = offset;
 
-function displaySources(sources) {
-
-    sourceLinks.innerHTML = "";
-
-
-    // No sources
-    if (!sources || sources.length === 0) {
-
-        sourceLinks.textContent =
-            "No reliable source found.";
-
-        return;
-
-    }
-
-
-    sources.forEach((source, index) => {
-
-        const link = document.createElement("a");
-
-        // Support both formats:
-        //
-        // "https://example.com"
-        //
-        // OR
-        //
-        // { title: "...", url: "..." }
-
-        if (typeof source === "string") {
-
-            link.href = source;
-
-            link.textContent =
-                `Source ${index + 1}`;
-
+        // Confidence tier
+        if (confPercent >= 80) {
+            confidenceTier.textContent = "High Confidence";
+        } else if (confPercent >= 60) {
+            confidenceTier.textContent = "Moderate Confidence";
         } else {
-
-            link.href = source.url;
-
-            link.textContent =
-                source.title ||
-                `Source ${index + 1}`;
-
+            confidenceTier.textContent = "Low / Inconclusive";
         }
 
+        // 3. Explanation text
+        verdictReason.textContent = data.reason || data.explanation || data.explanation_en || "Analysis complete.";
 
-        link.target = "_blank";
+        // 4. Provenance Badges
+        renderProvenanceBadges(data);
 
-        link.rel = "noopener noreferrer";
+        // 5. Sub-Signals Breakdown
+        renderSubSignals(data);
 
+        // 6. Processing Time
+        const displayLatency = data.processing_time_ms || measuredDurationMs || 0;
+        latencyVal.textContent = `${displayLatency}ms`;
+    }
 
-        if (index > 0) {
+    function renderProvenanceBadges(data) {
+        provenanceBadges.innerHTML = "";
+        const signals = data.signals || {};
+        const meta = signals.metadata || {};
 
-            sourceLinks.appendChild(
-                document.createTextNode(" • ")
+        const tags = [];
+
+        if (meta.editing_tools && meta.editing_tools.length > 0) {
+            tags.push(`🛠️ ${meta.editing_tools.join(", ")}`);
+        }
+        if (meta.genai_tools && meta.genai_tools.length > 0) {
+            tags.push(`✨ ${meta.genai_tools.join(", ")}`);
+        }
+        if (meta.is_stripped) {
+            tags.push("📁 EXIF Stripped");
+        } else if (meta.editing_tools?.length === 0 && meta.genai_tools?.length === 0) {
+            tags.push("📷 Camera EXIF Intact");
+        }
+
+        if (signals.deepfake?.face_detected) {
+            tags.push(`👤 ${signals.deepfake.face_count || 1} Face(s) Detected`);
+        }
+
+        if (signals.chyron_tampering?.is_screenshot) {
+            tags.push(`📱 Screenshot (${signals.chyron_tampering.aspect_ratio || "Aspect"})`);
+        }
+
+        tags.forEach((text) => {
+            const pill = document.createElement("span");
+            pill.className = "provenance-pill";
+            pill.textContent = text;
+            provenanceBadges.appendChild(pill);
+        });
+    }
+
+    function renderSubSignals(data) {
+        const signals = data.signals || {};
+
+        // ELA Signal
+        const elaScore = signals.ela?.spatial_anomaly_score ?? signals.ela_score ?? 0.0;
+        const elaPercent = Math.round(elaScore * 100);
+        const anomBlocks = signals.ela?.anomalous_blocks ?? 0;
+        updateSignalBar(
+            elaBadge, elaBar, elaDesc,
+            elaPercent,
+            elaScore > 0.65 ? "badge-danger" : (elaScore > 0.4 ? "badge-warning" : "badge-clean"),
+            elaScore > 0.65
+                ? `High compression variance disparity (${anomBlocks} spliced block clusters)`
+                : (elaScore > 0.4 ? "Moderate compression variance across block grid" : "Uniform JPEG compression history across entire image")
+        );
+
+        // AI Generator Signal
+        const aiScore = signals.ai_generator?.ai_confidence ?? signals.ai_generated_score ?? 0.0;
+        const aiPercent = Math.round(aiScore * 100);
+        const modelUsed = signals.ai_generator?.model_used || "spectral_heuristics";
+        updateSignalBar(
+            aiBadge, aiBar, aiDesc,
+            aiPercent,
+            aiScore > 0.65 ? "badge-danger" : (aiScore > 0.4 ? "badge-warning" : "badge-clean"),
+            aiScore > 0.65
+                ? `Synthetic generation patterns detected (${modelUsed})`
+                : `Natural optical capture signature (${modelUsed})`
+        );
+
+        // Face & Deepfake Signal
+        const dfData = signals.deepfake || {};
+        if (dfData.face_detected && !dfData.skipped) {
+            const dfScore = dfData.deepfake_score ?? signals.deepfake_score ?? 0.0;
+            const dfPercent = Math.round(dfScore * 100);
+            updateSignalBar(
+                dfBadge, dfBar, dfDesc,
+                dfPercent,
+                dfScore > 0.65 ? "badge-danger" : (dfScore > 0.4 ? "badge-warning" : "badge-clean"),
+                dfScore > 0.65
+                    ? `Facial blending seams & smoothing disparity detected (${dfData.face_count} face(s))`
+                    : `Natural facial lighting & skin texture consistency (${dfData.face_count} face(s))`
             );
-
+        } else {
+            updateSignalBar(
+                dfBadge, dfBar, dfDesc,
+                0, "badge-neutral",
+                "Skipped — no human face regions detected in image"
+            );
         }
 
+        // Chyron / Screenshot Tampering Signal
+        const chyronData = signals.chyron_tampering || {};
+        const chyronScore = chyronData.tamper_score ?? signals.chyron_score ?? 0.0;
+        const chyronPercent = Math.round(chyronScore * 100);
+        if (chyronData.is_screenshot) {
+            updateSignalBar(
+                chyronBadge, chyronBar, chyronDesc,
+                chyronPercent,
+                chyronScore > 0.45 ? "badge-danger" : "badge-clean",
+                chyronScore > 0.45
+                    ? `Mismatched edge sharpness in lower-third banner (doctored text)`
+                    : `Text rendering & antialiasing consistent with screenshot frame`
+            );
+        } else {
+            updateSignalBar(
+                chyronBadge, chyronBar, chyronDesc,
+                chyronPercent, "badge-neutral",
+                "Non-screenshot aspect ratio — standard raster photo"
+            );
+        }
+    }
 
-        sourceLinks.appendChild(link);
+    function updateSignalBar(badgeEl, barEl, descEl, percent, badgeClass, description) {
+        badgeEl.textContent = `${percent}%`;
+        badgeEl.className = `signal-badge ${badgeClass}`;
 
-    });
+        barEl.style.width = `${Math.max(4, percent)}%`;
 
-}
+        if (badgeClass === "badge-danger") {
+            barEl.style.background = "linear-gradient(90deg, #EF4444, #F87171)";
+        } else if (badgeClass === "badge-warning") {
+            barEl.style.background = "linear-gradient(90deg, #F59E0B, #FBBF24)";
+        } else if (badgeClass === "badge-clean") {
+            barEl.style.background = "linear-gradient(90deg, #22C55E, #4ADE80)";
+        } else {
+            barEl.style.background = "rgba(255, 255, 255, 0.2)";
+        }
 
+        descEl.textContent = description;
+    }
 
-// ==========================================
-// 12. ERROR HANDLING
-// ==========================================
+    function animateCounter(element, targetVal, durationMs) {
+        const startVal = 0;
+        const startTime = performance.now();
 
-function showError(message) {
+        function update(now) {
+            const progress = Math.min((now - startTime) / durationMs, 1);
+            const current = Math.round(startVal + (targetVal - startVal) * easeOutQuad(progress));
+            element.textContent = current;
+            if (progress < 1) {
+                requestAnimationFrame(update);
+            }
+        }
 
-    clearInterval(countdownTimer);
+        requestAnimationFrame(update);
+    }
 
+    function easeOutQuad(t) {
+        return t * (2 - t);
+    }
 
-    loadingView.classList.add("hidden");
+    // =========================================================================
+    // Utilities & Error Handling
+    // =========================================================================
 
-    resultView.classList.remove("hidden");
+    function showError(msg) {
+        errorMessage.textContent = msg;
+        errorBanner.classList.remove("hidden");
+    }
 
+    function hideError() {
+        errorBanner.classList.add("hidden");
+    }
 
-    verdictContainer.classList.remove(
-        "verdict-true",
-        "verdict-false"
-    );
+    function resetToUploadView() {
+        resultsPanel.classList.add("hidden");
+        loadingPanel.classList.add("hidden");
+        intakePanel.classList.remove("hidden");
+        clearSelectedFile();
+    }
 
+    function copyResultJson() {
+        if (!latestAnalysisResult) return;
+        const text = JSON.stringify(latestAnalysisResult, null, 2);
 
-    verdictContainer.classList.add(
-        "verdict-unverifiable"
-    );
+        navigator.clipboard.writeText(text).then(() => {
+            const btnSpan = copyJsonBtn.querySelector("span");
+            const originalText = btnSpan.textContent;
+            btnSpan.textContent = "Copied! ✓";
+            setTimeout(() => {
+                btnSpan.textContent = originalText;
+            }, 2000);
+        }).catch((err) => {
+            console.error("Clipboard copy failed:", err);
+        });
+    }
 
-
-    verdictTitle.textContent =
-        "Unable to Verify ⚠️";
-
-
-    confidenceScore.textContent =
-        "—";
-
-
-    explanationEnglish.textContent =
-        message ||
-        "Something went wrong while checking this forward.";
-
-
-    sourceLinks.textContent =
-        "Please try again.";
-
-}
-
-
-// ==========================================
-// 13. RESET BUTTON
-// ==========================================
-
-resetBtn.addEventListener("click", function () {
-
-    clearInterval(countdownTimer);
-
-
-    // Clear inputs
-    claimText.value = "";
-
-    claimImage.value = "";
-
-    selectedImage = null;
-
-
-    // Restore upload label
-    const uploadLabel =
-        document.querySelector(".upload-label");
-
-    uploadLabel.textContent =
-        "📷 Tap to Upload Image";
-
-
-    // Restore views
-    resultView.classList.add("hidden");
-
-    loadingView.classList.add("hidden");
-
-    intakeView.classList.remove("hidden");
-
-
-    // Restore default card state
-    verdictContainer.classList.remove(
-        "verdict-true",
-        "verdict-false"
-    );
-
-    verdictContainer.classList.add(
-        "verdict-unverifiable"
-    );
-
-});
+    // Run on DOM Ready
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }
+})();
