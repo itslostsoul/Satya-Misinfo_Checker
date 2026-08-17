@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-multipart
+httpx
+google-genai
+pydantic
+numpy
+pillow
+anthropic
+sentence-transformers
+transformers
+torch
+python-dotenv
+beautifulsoup4

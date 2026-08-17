@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satya | Forward-Checker</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="bg-shape bg-teal"></div>
+    <div class="bg-shape bg-green"></div>
+    
+    <div class="app-container">
+        <header>
+            <h1>Satya 🛡️</h1>
+            <p>Verify forwards in under 60 seconds.</p>
+        </header>
+
+        <!-- 1. Intake View -->
+        <main id="intake-view">
+            <textarea id="claim-text" placeholder="Paste suspicious text here..."></textarea>
+
+            <div class="file-upload-box">
+                <input type="file" id="claim-image" accept="image/*" hidden>
+                <label for="claim-image" class="upload-label">📷 Tap to Upload Image</label>
+            </div>
+
+            <div class="language-box">
+                <label for="lang-select" style="display: block; margin-bottom: 8px; color: #a0aec0; font-weight: 600; font-size: 14px;">Select Language:</label>
+                <select id="lang-select" class="language-dropdown">
+                    <option value="english">English</option>
+                    <option value="hindi">Hindi (हिन्दी)</option>
+                    <option value="tamil">Tamil (தமிழ்)</option>
+                    <option value="telugu">Telugu (తెలుగు)</option>
+                    <option value="kannada">Kannada (ಕನ್ನಡ)</option>
+                    <option value="malayalam">Malayalam (മലയാളம்)</option>
+                    <option value="bengali">Bengali (বাংলা)</option>
+                    <option value="marathi">Marathi (மராठी)</option>
+                </select>
+            </div>
+
+            <button id="verify-btn">Verify Forward</button>
+        </main>
+
+        <!-- 2. Loading View (Hidden by default) -->
+        <div id="loading-view" class="hidden">
+            <div class="spinner"></div>
+            <p class="loading-text">Scanning fact-check databases...</p>
+        </div>
+
+        <!-- 3. Verdict Card View (Hidden by default) -->
+        <section id="result-view" class="hidden">
+            <div id="verdict-container" class="card verdict-unverifiable">
+                <h2 id="verdict-title">Unverifiable ⚠️</h2>
+
+                <div class="confidence-badge">
+                    Confidence: <span id="confidence-score">75%</span>
+                </div>
+
+                <div class="explanation-box">
+                    <p id="expl-en">Waiting for analysis...</p>
+                </div>
+
+                <div class="sources">
+                    <strong>Sources:</strong> <span id="source-links">-</span>
+                </div>
+            </div>
+
+            <button id="reset-btn" class="secondary-btn">Check Another Claim</button>
+        </section>
+    </div>
+
+    <script>
+        // Map new IDs used in script.js to existing HTML IDs to preserve unmodified structure & CSS
+        (function() {
+            const originalGet = document.getElementById;
+            document.getElementById = function(id) {
+                const mapping = {
+                    'text-input': 'claim-text',
+                    'image-input': 'claim-image',
+                    'verdict-card': 'verdict-container',
+                    'confidence': 'confidence-score',
+                    'explanation-en': 'expl-en',
+                    'sources': 'source-links',
+                    'verdict-view': 'result-view'
+                };
+                const mappedId = mapping[id] || id;
+                let el = originalGet.call(document, mappedId);
+                
+                // Dynamically create explanation-regional to support regional language rendering
+                if (!el && id === 'explanation-regional') {
+                    const box = document.querySelector('.explanation-box');
+                    if (box) {
+                        el = document.createElement('p');
+                        el.id = 'explanation-regional';
+                        el.style.marginTop = '8px';
+                        el.style.borderTop = '1px dashed rgba(255,255,255,0.1)';
+                        el.style.paddingTop = '8px';
+                        box.appendChild(el);
+                    }
+                }
+                return el;
+            };
+        })();
+    </script>
+    <script src="script.js" defer></script>
+</body>
+</html>

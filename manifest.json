@@ -1,0 +1,28 @@
+{
+  "name": "Satya Forward-Checker",
+  "short_name": "Satya",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#25D366",
+  "share_target": {
+  "action": "https://janel-hyperpolysyllabic-vegetally.ngrok-free.dev/api/verify",
+  "method": "POST",
+  "enctype": "multipart/form-data",
+  "params": {
+    "files": [
+      {
+        "name": "image",
+        "accept": ["image/jpeg", "image/png"]
+      }
+    ]
+  }
+},
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    }
+  ]
+}

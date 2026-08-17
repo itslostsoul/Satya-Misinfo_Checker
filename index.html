@@ -1,0 +1,285 @@
+<!--
+=============================================================================
+  Satya Image Forensics — AI & Manipulation Detection Web UI
+=============================================================================
+  How to run:
+  Terminal 1: uvicorn api:app --reload --port 8000
+  Terminal 2: open index.html in browser (or use Live Server extension)
+=============================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satya Image Forensics | AI & Manipulation Detection</title>
+    <meta name="description" content="State-of-the-art image forensics: Error Level Analysis (ELA), AI synthetic detection, deepfake facial analysis, and chyron tampering detection.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="./manifest.json">
+</head>
+<body>
+    <!-- Background glowing ambient lights -->
+    <div class="glow-orb glow-top"></div>
+    <div class="glow-orb glow-bottom"></div>
+
+    <div class="app-layout">
+        <!-- Main Application Card -->
+        <main class="forensics-card">
+            
+            <!-- Header -->
+            <header class="app-header">
+                <div class="brand-badge">
+                    <span class="pulse-dot"></span>
+                    <span>ENGINE V1.0 • ELA &amp; AI FORENSICS</span>
+                </div>
+                <h1 class="brand-title">
+                    <span class="shield-icon">🛡️</span> Satya Image Forensics
+                </h1>
+                <p class="brand-tagline">AI &amp; manipulation detection</p>
+            </header>
+
+            <!-- Error Banner (Hidden by default) -->
+            <div id="error-banner" class="error-banner hidden" role="alert">
+                <div class="error-icon">⚠️</div>
+                <div class="error-content">
+                    <div class="error-title">Analysis Failed</div>
+                    <div id="error-message" class="error-desc">Unable to connect to the backend server.</div>
+                    <div class="error-hint">Ensure backend is running: <code>uvicorn api:app --reload --port 8000</code></div>
+                </div>
+                <button id="close-error-btn" class="error-close" aria-label="Dismiss error">&times;</button>
+            </div>
+
+            <!-- 1. Intake / Upload Panel -->
+            <section id="intake-panel" class="panel-section active">
+                
+                <!-- Drag and Drop Zone -->
+                <div id="drop-zone" class="drop-zone" tabindex="0" role="button" aria-label="Upload image zone">
+                    <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+                    
+                    <!-- Empty State View -->
+                    <div id="drop-content-empty" class="drop-content">
+                        <div class="upload-icon-wrapper">
+                            <svg class="upload-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div class="drop-title">Drag &amp; drop your image here</div>
+                        <div class="drop-subtitle">or <span class="browse-link">browse files</span> from your computer</div>
+                        <div class="drop-formats">Supports JPG, PNG, WEBP, GIF &bull; Max 10MB</div>
+                    </div>
+
+                    <!-- Image Preview View (Hidden initially) -->
+                    <div id="drop-content-preview" class="preview-container hidden">
+                        <div class="preview-img-wrapper">
+                            <img id="preview-image" src="" alt="Forensics target preview">
+                            <div class="preview-overlay">
+                                <span class="overlay-text">Click or drop to replace</span>
+                            </div>
+                        </div>
+                        <div class="preview-meta">
+                            <div id="preview-filename" class="preview-filename">image.jpg</div>
+                            <div id="preview-filesize" class="preview-filesize">0 KB</div>
+                        </div>
+                        <button type="button" id="remove-img-btn" class="remove-btn" title="Remove image">&times; Remove</button>
+                    </div>
+                </div>
+
+                <!-- Advanced Options Toggle -->
+                <details class="advanced-options">
+                    <summary class="advanced-summary">
+                        <span>⚙️ Advanced Options (Optional)</span>
+                    </summary>
+                    <div class="advanced-fields">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="screenshot-toggle">
+                            <span>Treat as mobile/broadcast screenshot (enables Chyron OCR analysis)</span>
+                        </label>
+                        <div class="input-group">
+                            <label for="claimed-source-input">Claimed Source URL (for banner cross-checking):</label>
+                            <input type="url" id="claimed-source-input" placeholder="e.g. https://bbc.com/news">
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Action Button -->
+                <button type="button" id="analyze-btn" class="primary-btn" disabled>
+                    <span class="btn-text">Analyze Image</span>
+                    <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </button>
+            </section>
+
+            <!-- 2. Loading State Panel -->
+            <section id="loading-panel" class="panel-section hidden">
+                <div class="loading-box">
+                    <div class="scanner-wrapper">
+                        <div class="scanner-ring outer-ring"></div>
+                        <div class="scanner-ring middle-ring"></div>
+                        <div class="scanner-ring inner-ring"></div>
+                        <div class="scanner-center">🔍</div>
+                    </div>
+                    <h2 class="loading-headline">Analyzing Image...</h2>
+                    <p id="loading-step-text" class="loading-step">Running Error Level Analysis (ELA)...</p>
+                    <div class="loading-progress-bar">
+                        <div class="loading-bar-fill"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Results Panel -->
+            <section id="results-panel" class="panel-section hidden">
+                
+                <!-- Verdict Header Card -->
+                <div id="verdict-banner" class="verdict-banner verdict-manipulated">
+                    <div class="verdict-tag-wrapper">
+                        <span class="verdict-sub-label">FORENSIC VERDICT</span>
+                        <div id="verdict-title" class="verdict-title">MANIPULATED</div>
+                    </div>
+                    <div class="verdict-icon-container" id="verdict-icon">❌</div>
+                </div>
+
+                <!-- Metrics & Reason Card -->
+                <div class="results-hero-grid">
+                    
+                    <!-- Circular Confidence Meter -->
+                    <div class="metric-card confidence-card">
+                        <div class="card-label">CONFIDENCE SCORE</div>
+                        <div class="circle-progress-wrapper">
+                            <svg class="progress-ring" viewBox="0 0 120 120">
+                                <circle class="progress-ring-bg" cx="60" cy="60" r="50" />
+                                <circle id="confidence-circle" class="progress-ring-circle" cx="60" cy="60" r="50" />
+                            </svg>
+                            <div class="circle-content">
+                                <span id="confidence-number" class="confidence-number">85</span>
+                                <span class="confidence-symbol">%</span>
+                            </div>
+                        </div>
+                        <div id="confidence-tier" class="confidence-tier">High Confidence</div>
+                    </div>
+
+                    <!-- Plain Language Reason -->
+                    <div class="metric-card reason-card">
+                        <div class="card-label">FINDINGS EXPLANATION</div>
+                        <p id="verdict-reason" class="verdict-reason-text">
+                            Analyzing forensic signals...
+                        </p>
+                        <div id="provenance-badges" class="provenance-badges"></div>
+                    </div>
+                </div>
+
+                <!-- Expandable Sub-signals Section -->
+                <div class="signals-section">
+                    <div class="signals-header">
+                        <h3 class="signals-title">Detector Breakdown</h3>
+                        <span class="signals-subtitle">Individual layer analysis</span>
+                    </div>
+
+                    <div class="signals-list">
+                        
+                        <!-- 1. ELA -->
+                        <div class="signal-row">
+                            <div class="signal-info">
+                                <div class="signal-name-wrapper">
+                                    <span class="signal-icon">🔬</span>
+                                    <span class="signal-name">Error Level Analysis (ELA)</span>
+                                </div>
+                                <div class="signal-meta">
+                                    <span id="ela-badge" class="signal-badge badge-neutral">0%</span>
+                                </div>
+                            </div>
+                            <div class="signal-track">
+                                <div id="ela-bar" class="signal-fill" style="width: 0%;"></div>
+                            </div>
+                            <div id="ela-desc" class="signal-detail">Scanning spatial compression history...</div>
+                        </div>
+
+                        <!-- 2. AI Generator -->
+                        <div class="signal-row">
+                            <div class="signal-info">
+                                <div class="signal-name-wrapper">
+                                    <span class="signal-icon">🤖</span>
+                                    <span class="signal-name">AI Generation Detector</span>
+                                </div>
+                                <div class="signal-meta">
+                                    <span id="ai-badge" class="signal-badge badge-neutral">0%</span>
+                                </div>
+                            </div>
+                            <div class="signal-track">
+                                <div id="ai-bar" class="signal-fill" style="width: 0%;"></div>
+                            </div>
+                            <div id="ai-desc" class="signal-detail">Checking diffusion &amp; GAN frequency artifacts...</div>
+                        </div>
+
+                        <!-- 3. Face & Deepfake -->
+                        <div class="signal-row">
+                            <div class="signal-info">
+                                <div class="signal-name-wrapper">
+                                    <span class="signal-icon">👤</span>
+                                    <span class="signal-name">Face &amp; Deepfake Analysis</span>
+                                </div>
+                                <div class="signal-meta">
+                                    <span id="df-badge" class="signal-badge badge-neutral">0%</span>
+                                </div>
+                            </div>
+                            <div class="signal-track">
+                                <div id="df-bar" class="signal-fill" style="width: 0%;"></div>
+                            </div>
+                            <div id="df-desc" class="signal-detail">Evaluating facial blending seams &amp; symmetry...</div>
+                        </div>
+
+                        <!-- 4. Screenshot / Chyron -->
+                        <div class="signal-row">
+                            <div class="signal-info">
+                                <div class="signal-name-wrapper">
+                                    <span class="signal-icon">📺</span>
+                                    <span class="signal-name">Screenshot &amp; Chyron Doctoring</span>
+                                </div>
+                                <div class="signal-meta">
+                                    <span id="chyron-badge" class="signal-badge badge-neutral">0%</span>
+                                </div>
+                            </div>
+                            <div class="signal-track">
+                                <div id="chyron-bar" class="signal-fill" style="width: 0%;"></div>
+                            </div>
+                            <div id="chyron-desc" class="signal-detail">Checking text sharpness &amp; antialiasing consistency...</div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Footer Stats & Actions -->
+                <div class="results-footer">
+                    <div id="processing-time" class="processing-badge">
+                        <span class="bolt-icon">⚡</span> Processing time: <span id="latency-val">0ms</span>
+                    </div>
+
+                    <div class="footer-buttons">
+                        <button type="button" id="copy-json-btn" class="secondary-btn">
+                            <span>📋 Copy JSON</span>
+                        </button>
+                        <button type="button" id="reset-btn" class="primary-btn reset-action-btn">
+                            <span>Check Another Image</span>
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js');
+    }
+</script>
+</body>
+</html>
