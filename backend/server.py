@@ -1,14 +1,15 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
 from orchestrator import classify_and_route
 from verdict import merge_and_calibrate
 from card_renderer import render_card
 from mock_responses import mock_verify
-
-load_dotenv()
 
 app = FastAPI()
 
@@ -19,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-HAS_KEYS = bool(os.getenv("ANTHROPIC_API_KEY")) and bool(os.getenv("GOOGLE_FACT_CHECK_KEY"))
+HAS_KEYS = bool(os.getenv("GEMINI_API_KEY")) and bool(os.getenv("GOOGLE_FACT_CHECK_KEY"))
 
 @app.post("/api/verify")
 async def verify(

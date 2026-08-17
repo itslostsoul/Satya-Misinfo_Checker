@@ -2,10 +2,9 @@ fastapi
 uvicorn
 python-multipart
 httpx
-anthropic
+google-genai
 sentence-transformers
 transformers
 torch
 python-dotenv
 pillow
-python-telegram-bot
